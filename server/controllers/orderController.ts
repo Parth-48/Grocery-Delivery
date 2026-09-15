@@ -5,6 +5,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../config/prisma.js";
 import { inngest } from "../inngest/index.js";
+import Stripe from 'stripe';
 
 export const createOrder = async (req: Request, res: Response) => {
     const {items, shippingAddress, paymentMethod} = req.body;
@@ -15,20 +16,20 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const productIds = items.map((i: any) => i.product);
     const products = await prisma.product.findMany({where: {id: {in: productIds}}})
-    const prdoductMap: Record<string , (typeof products)[0]> = {}
+    const productMap: Record<string , (typeof products)[0]> = {}
 
-    products.forEach((p: any) => (prdoductMap[p.id] = p))
+    products.forEach((p: any) => (productMap[p.id] = p))
 
     for(const item of items){
-        const product = prdoductMap[item.product]
+        const product = productMap[item.product]
         if(!product || (product.stock ?? 0) < item.quantity){
             return res.status(404).json({message: "Product out of stock"});
         }
     }
 
     const orderItems = items.map((item: any) => {
-        const dbProduct = prdoductMap[item.prdoduct];
-        if (!dbProduct) throw new Error(`Product $(item.product) not found`);
+        const dbProduct = productMap[item.product];
+        if (!dbProduct) throw new Error(`Product ${item.product} not found`);
         return {
             product: dbProduct.id,
             name: dbProduct.name,
@@ -59,13 +60,34 @@ export const createOrder = async (req: Request, res: Response) => {
     })
 
     if(paymentMethod === "card"){
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string)
 
+        //create session
+        const session = await stripe.checkout.sessions.create({
+        success_url: `${req.headers.origin}/orders?clearCart=true`,
+        cancel_url: `${req.headers.origin}/checkout`,
+        line_items: [
+            {
+            price_data: {
+                currency: "inr",
+                product_data: {
+                    name: "Payment Groceries."
+                },
+                unit_amount: Math.round(total * 100)
+            },
+            quantity: 1,
+            },
+        ],
+        mode: 'payment',
+        metadata: {orderId: order.id}
+        });
+        return res.json({url: session.url})
     }
 
     res.json({order})
 
     //Decrease stock
-    for(const item of items){
+    for(const item of orderItems){
         await prisma.product.update({
             where: {id: item.product},
             data: {stock: {decrement: item.quantity}}

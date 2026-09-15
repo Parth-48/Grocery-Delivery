@@ -29,7 +29,7 @@ export const register = async (req: Request, res: Response) => {
         })
     }
 
-    const existingUser = await prisma.user.findUnique({where: {email: email.toLowerCase}})
+    const existingUser = await prisma.user.findUnique({where: {email: email.toLowerCase()}})
     if(existingUser){
         return res.status(400).json({message: "User already exists with this email"})
     }
@@ -66,7 +66,7 @@ export const login = async (req: Request, res: Response) => {
         })
     }
 
-    const user = await prisma.user.findUnique({where: {email: email.toLowerCase}, include: {addresses: true}})
+    const user = await prisma.user.findUnique({where: {email: email.toLowerCase()}, include: {addresses: true}})
     if(!user){
         return res.status(401).json({message: "Invalid email or password"})
     }
