@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { statusColors } from "../assets/assets";
 import Loading from "../components/Loading";
-import { CalendarIcon, ChevronDown, ChevronRightIcon, PackageIcon } from "lucide-react";
+import { CalendarIcon, ChevronRightIcon, PackageIcon } from "lucide-react";
 import api from "../config/api";
 import toast from "react-hot-toast";
 
